@@ -2,6 +2,7 @@ package dao;
 
 import api.ReceiptResponse;
 import generated.tables.records.ReceiptsRecord;
+import generated.tables.records.TagsRecord;
 import org.jooq.Configuration;
 import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
@@ -11,6 +12,7 @@ import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
 import static generated.Tables.RECEIPTS;
+import static generated.Tables.TAGS;
 
 public class ReceiptDao {
     DSLContext dsl;
@@ -34,4 +36,35 @@ public class ReceiptDao {
     public List<ReceiptsRecord> getAllReceipts() {
         return dsl.selectFrom(RECEIPTS).fetch();
     }
+
+    public void tagReceipt(String tagName, Integer receiptId) {
+        TagsRecord checkIfExists = dsl.selectFrom(TAGS)
+                .where(TAGS.TAG.eq(tagName))
+                .and(TAGS.ID.eq(receiptId))
+                .fetchOne();
+
+        if (checkIfExists == null) {
+            dsl.insertInto(TAGS, TAGS.ID, TAGS.TAG)
+                    .values(receiptId, tagName)
+                    .execute();
+        }
+        else {
+            dsl.delete(TAGS)
+                    .where(TAGS.TAG.eq(tagName))
+                    .and(TAGS.ID.eq(receiptId))
+                    .execute();
+        }
+
+    }
+
+    public List<ReceiptsRecord> getTags(String tagName) {
+        List<ReceiptsRecord> taggedReceipts = dsl.select()
+                .from(RECEIPTS)
+                .join(TAGS).on(TAGS.ID.eq(RECEIPTS.ID))
+                .where(TAGS.TAG.eq(tagName))
+                .fetchInto(RECEIPTS);
+
+        return taggedReceipts;
+    }
+
 }

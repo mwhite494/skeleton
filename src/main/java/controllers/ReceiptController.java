@@ -13,7 +13,7 @@ import java.util.List;
 
 import static java.util.stream.Collectors.toList;
 
-@Path("/receipts")
+@Path("")
 @Consumes(MediaType.APPLICATION_JSON)
 @Produces(MediaType.APPLICATION_JSON)
 public class ReceiptController {
@@ -24,13 +24,37 @@ public class ReceiptController {
     }
 
     @POST
+    @Path("/receipts")
     public int createReceipt(@Valid @NotNull CreateReceiptRequest receipt) {
         return receipts.insert(receipt.merchant, receipt.amount);
     }
 
     @GET
+    @Path("/receipts")
     public List<ReceiptResponse> getReceipts() {
         List<ReceiptsRecord> receiptRecords = receipts.getAllReceipts();
         return receiptRecords.stream().map(ReceiptResponse::new).collect(toList());
     }
+
+    @PUT
+    @Path("/tags/{tag}")
+    public void toggleTag(@PathParam("tag") String tagName, @Valid @NotNull Integer receiptId) {
+        receipts.tagReceipt(tagName, receiptId);
+    }
+
+    @GET
+    @Path("/tags/{tag}")
+    public List<ReceiptResponse> getTaggedReceipts(@PathParam("tag") String tagName) {
+        List<ReceiptsRecord> taggedReceipts = receipts.getTags(tagName);
+        return taggedReceipts.stream().map(ReceiptResponse::new).collect(toList());
+    }
+
+    @GET
+    @Path("/netid")
+    @Produces(MediaType.TEXT_PLAIN)
+    public String getNetId() {
+        String netid = "mtw79";
+        return netid;
+    }
+
 }
