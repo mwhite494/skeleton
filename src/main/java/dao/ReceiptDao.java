@@ -8,6 +8,7 @@ import org.jooq.DSLContext;
 import org.jooq.impl.DSL;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 import static com.google.common.base.Preconditions.checkState;
@@ -66,5 +67,7 @@ public class ReceiptDao {
 
         return taggedReceipts;
     }
+
+    public List<TagsRecord> getAllTags() { return dsl.selectFrom(TAGS).fetch(); }
 
 }
