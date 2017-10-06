@@ -2,22 +2,63 @@
 <html>
 
 <head>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" />
     <script data-require="jquery@*" data-semver="3.1.1" src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
     <style>
         #container {}
-        H1 {float: left;}
+        H1 {float: left; margin-left: 50px;}
+        video {
+            width: 450px;
+            height: 338px;
+            margin-left: 23px;
+            border: 2px solid black;
+        }
+        #videoForm {
+            clear: both;
+            display: none;
+            background-color: orange;
+            border: 2px solid black;
+            width: 500px;
+            margin-left: 20px;
+            margin-bottom: 10px;
+        }
+        #vidwrap {
+            margin: 20px 0;
+        }
+        #take-pic {
+            background-color: limegreen;
+            margin-left: 100px;
+            margin-top: -20px;
+            margin-bottom: 20px;
+            line-height: 35px;
+        }
+        #take-pic-cancel {
+            background-color: red;
+            margin-left: 100px;
+            margin-top: -20px;
+            margin-bottom: 20px;
+        }
         .button{
             display: inline-block;
             background-color:orange;
             border: 2px solid black;
             width: 100px;
-            margin-left: 230px;
+            height: 39px;
             margin-top: 20px;
             font-size: 2em;
             color: black;
             text-align: center;
             cursor: pointer;
+        }
+        .button-container {
+            display: flex;
+        }
+        #add-receipt {
+            margin-left: 20px;
+            line-height: 30px;
+        }
+        #start-camera {
+            margin-left: 43px;
         }
         #receiptList {
             clear: both;
@@ -25,6 +66,7 @@
             background-color: deepskyblue;
             border: 2px solid black;
             width: 500px;
+            margin-left: 20px;
         }
         #header{
             display: block;
@@ -36,7 +78,7 @@
             display: inline-block;
             width: 120px;
             text-align: center;
-            font-size: 1.2em;
+            font-size: 1.3em;
         }
         .created{
             display: inline-block;
@@ -57,6 +99,7 @@
             display: block;
             clear: both;
             width: 500px;
+            font-size: 1.2em;
             margin-bottom: 10px;
         }
         #receiptForm {
@@ -65,6 +108,7 @@
             background-color: orange;
             border: 2px solid black;
             width: 500px;
+            margin-left: 20px;
             margin-bottom: 10px;
         }
         #merchant {
@@ -93,7 +137,7 @@
             margin-bottom: 20px;
         }
         #save-receipt {
-            background-color: green;
+            background-color: limegreen;
             margin-left: 100px;
             margin-top: 0px;
             margin-bottom: 20px;
@@ -103,7 +147,7 @@
             border: 2px solid black;
             width: 90px;
             border-radius: 10px;
-            margin-left: 15px;
+            margin-left: 12px;
             cursor: pointer;
             text-align: center;
             display: inline-block;
@@ -141,6 +185,59 @@
                 }
             });
         };
+        let imageCapture;
+        let track;
+
+        function attachMediaStream(mediaStream) {
+            $('video')[0].srcObject = mediaStream;
+
+            // Saving the track allows us to capture a photo
+            track = mediaStream.getVideoTracks()[0];
+            imageCapture = new ImageCapture(track);
+        }
+
+        function startVideo() {
+            navigator.mediaDevices.getUserMedia({video: {facingMode: {exact: "environment"}}})
+                .then(attachMediaStream)
+                .catch(error => {
+                    navigator.mediaDevices.getUserMedia({video: true})
+                        .then(attachMediaStream)
+                        .catch(error => {
+                            console.log(error);
+                        })
+                })
+        }
+
+        function takeSnapshot() {
+            // create a CANVAS element that is same size as the image
+            imageCapture.grabFrame()
+                .then(img => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                    const base64EncodedImageData = canvas.toDataURL('image/png').split(',')[1];
+                    $.ajax({
+                        url: "/images",
+                        type: "POST",
+                        data: base64EncodedImageData,
+                        contentType: "text/plain",
+                        success: function() {},
+                    })
+                        .then(response => {
+                            $('#videoForm').hide();
+                            $('#add-receipt').click();
+                            $('#merchant').val(response.merchantName);
+                            $('#amount').val(response.amount);
+                        })
+                        .always(() => console.log('request complete'));
+
+                    // For debugging, you can uncomment this to see the frame that was captured
+                    // $('BODY').append(canvas);
+                });
+
+        }
         // This is the idiomatic way to ensure that JQuery does not
         // execute until the page has loaded
         $(function(){
@@ -279,6 +376,21 @@
                 });
                 $(this).remove();
             });
+
+            $('#start-camera').click(function() {
+                $('#videoForm').show();
+                startVideo()
+            });
+
+            $('video').on('play', () => $('#take-pic').prop('disabled', false));
+
+            $('#take-pic').click(function() {
+                takeSnapshot();
+            });
+
+            $('#take-pic-cancel').click(function() {
+                $('#videoForm').hide();
+            });
         })
     </script>
 </head>
@@ -286,12 +398,23 @@
 <body>
 <DIV id="container">
     <h1>My Receipts</h1>
-    <div id="add-receipt" class="button">+</div>
+    <div class="button-container">
+        <div id="start-camera" class="button"><span class="glyphicon glyphicon-camera" ></span></div>
+        <div id="add-receipt" class="button">+</div>
+    </div>
     <div id ="receiptForm">
         <input id="merchant" type="text" placeholder="merchant" ><br>
         <input id="amount" type="number" placeholder="amount" ><br>
         <div id="cancel-receipt" class="button">Cancel</div>
         <div id="save-receipt" class="button">Save</div>
+    </div>
+    <div id="videoForm" >
+        <div id="vidwrap">
+            <video autoplay></video>
+        </div>
+        <br>
+        <div id="take-pic-cancel" class="button">Cancel</div>
+        <button id="take-pic" class="button" disabled="True">Snap</button>
     </div>
     <div id="receiptList">
         <div id="header">
@@ -301,6 +424,8 @@
             <div class="div-col"><b>Tags</b></div>
         </div>
     </div>
+
+</body>
 </DIV>
 </body>
 
